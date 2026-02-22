@@ -259,6 +259,10 @@ def canvas_list_pages(
     """
     List pages for a course.
 
+    Note: Some Canvas instances don't allow direct page listing.
+    This tool will try the direct API first, then fall back to
+    extracting pages from modules.
+
     Args:
         auth: Authentication context
         course_id: Canvas course ID
@@ -275,24 +279,49 @@ def canvas_list_pages(
         client = CanvasClient(auth)
         course = client.get_course(course_id)
 
-        paginated = course.get_pages()
-        items, has_more = CanvasClient.extract_paginated_list(paginated, page, page_size)
+        all_pages = []
 
-        # Filter by since if provided
-        if since:
-            from ..utils.normalize_time import is_after
+        # Try direct API first
+        try:
+            paginated = course.get_pages()
+            items, _ = CanvasClient.extract_paginated_list(paginated, 1, 1000)
+            all_pages = [serialize_page(p) for p in items]
+        except Exception:
+            # Direct API failed, use fallback
+            errors.append("Direct pages API unavailable, using module fallback")
 
-            items = [
-                item
-                for item in items
-                if is_after(getattr(item, "updated_at", None), since)
-            ]
+        # Fallback: Extract pages from modules if direct API failed
+        if not all_pages:
+            modules = list(course.get_modules())
 
-        pages = [serialize_page(p) for p in items]
+            for module in modules:
+                try:
+                    module_items = list(module.get_module_items())
+                    for item in module_items:
+                        if getattr(item, 'type', None) == 'Page':
+                            page_url = getattr(item, 'page_url', None)
+                            if page_url:
+                                try:
+                                    p = course.get_page(page_url)
+                                    all_pages.append(serialize_page(p))
+                                except Exception:
+                                    all_pages.append({
+                                        "url": page_url,
+                                        "title": getattr(item, 'title', None),
+                                        "course_id": course_id,
+                                    })
+                except Exception:
+                    continue
+
+        # Apply pagination
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_pages = all_pages[start_idx:end_idx]
+        has_more = len(all_pages) > end_idx
 
         return build_tool_output(
             tool="canvas_list_pages",
-            items=pages,
+            items=paginated_pages,
             page=page,
             page_size=page_size,
             has_more=has_more,

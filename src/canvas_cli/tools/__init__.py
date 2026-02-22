@@ -1,7 +1,11 @@
 """Canvas CLI tools package."""
 
 from .announcements import canvas_list_announcements
-from .assignments import canvas_list_assignments, canvas_list_quizzes
+from .assignments import (
+    canvas_list_assignments,
+    canvas_list_assignment_groups,
+    canvas_list_quizzes,
+)
 from .bundle import canvas_get_delta_bundle
 from .conversations import canvas_get_conversation, canvas_list_conversations
 from .courses import canvas_list_courses
@@ -37,6 +41,7 @@ __all__ = [
     # Assignments
     "canvas_list_assignments",
     "canvas_list_quizzes",
+    "canvas_list_assignment_groups",
     # Discussions
     "canvas_list_discussion_topics",
     "canvas_get_discussion_entries",
@@ -150,7 +155,7 @@ TOOL_REGISTRY = {
     },
     "canvas_list_assignments": {
         "function": canvas_list_assignments,
-        "description": "List assignments for a course.",
+        "description": "List assignments for a course. Use include_submissions=True to get submission data (grade, score, submitted_at).",
         "parameters": {
             "type": "object",
             "properties": {
@@ -166,7 +171,7 @@ TOOL_REGISTRY = {
     },
     "canvas_list_quizzes": {
         "function": canvas_list_quizzes,
-        "description": "List quizzes for a course.",
+        "description": "List quizzes for a course. Falls back to extracting quizzes from modules if direct API is disabled.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -175,6 +180,18 @@ TOOL_REGISTRY = {
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
+            },
+            "required": ["auth", "course_id"],
+        },
+    },
+    "canvas_list_assignment_groups": {
+        "function": canvas_list_assignment_groups,
+        "description": "List assignment groups with weights for a course. Shows how much each category contributes to the final grade.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "auth": {"type": "object"},
+                "course_id": {"type": "integer"},
             },
             "required": ["auth", "course_id"],
         },
@@ -306,7 +323,7 @@ TOOL_REGISTRY = {
     },
     "canvas_list_pages": {
         "function": canvas_list_pages,
-        "description": "List pages for a course.",
+        "description": "List pages for a course. Falls back to extracting pages from modules if direct API is disabled.",
         "parameters": {
             "type": "object",
             "properties": {

@@ -37,17 +37,31 @@ def serialize_assignment(assignment: Any) -> dict[str, Any]:
     }
 
     # Include submission data if available
+    # Note: submission can be a dict (from include=['submission']) or an object
     submission = getattr(assignment, "submission", None)
     if submission:
-        result["submission"] = {
-            "id": getattr(submission, "id", None),
-            "grade": getattr(submission, "grade", None),
-            "score": getattr(submission, "score", None),
-            "submitted_at": normalize_canvas_time(getattr(submission, "submitted_at", None)),
-            "workflow_state": getattr(submission, "workflow_state", None),
-            "late": getattr(submission, "late", False),
-            "missing": getattr(submission, "missing", False),
-        }
+        if isinstance(submission, dict):
+            # Handle dict format (from include=['submission'])
+            result["submission"] = {
+                "id": submission.get("id"),
+                "grade": submission.get("grade"),
+                "score": submission.get("score"),
+                "submitted_at": normalize_canvas_time(submission.get("submitted_at")),
+                "workflow_state": submission.get("workflow_state"),
+                "late": submission.get("late", False),
+                "missing": submission.get("missing", False),
+            }
+        else:
+            # Handle object format
+            result["submission"] = {
+                "id": getattr(submission, "id", None),
+                "grade": getattr(submission, "grade", None),
+                "score": getattr(submission, "score", None),
+                "submitted_at": normalize_canvas_time(getattr(submission, "submitted_at", None)),
+                "workflow_state": getattr(submission, "workflow_state", None),
+                "late": getattr(submission, "late", False),
+                "missing": getattr(submission, "missing", False),
+            }
 
     return result
 
@@ -176,6 +190,10 @@ def canvas_list_quizzes(
     """
     List quizzes for a course.
 
+    Note: Some Canvas instances don't allow direct quiz listing.
+    This tool will try the direct API first, then fall back to
+    extracting quizzes from modules.
+
     Args:
         auth: Authentication context
         course_id: Canvas course ID
@@ -192,24 +210,49 @@ def canvas_list_quizzes(
         client = CanvasClient(auth)
         course = client.get_course(course_id)
 
-        paginated = course.get_quizzes()
-        items, has_more = CanvasClient.extract_paginated_list(paginated, page, page_size)
+        all_quizzes = []
 
-        # Filter by since if provided
-        if since:
-            from ..utils.normalize_time import is_after
+        # Try direct API first
+        try:
+            paginated = course.get_quizzes()
+            items, _ = CanvasClient.extract_paginated_list(paginated, 1, 1000)
+            all_quizzes = [serialize_quiz(q) for q in items]
+        except Exception:
+            # Direct API failed, use fallback
+            errors.append("Direct quizzes API unavailable, using module fallback")
 
-            items = [
-                item
-                for item in items
-                if is_after(getattr(item, "updated_at", None), since)
-            ]
+        # Fallback: Extract quizzes from modules if direct API failed
+        if not all_quizzes:
+            modules = list(course.get_modules())
 
-        quizzes = [serialize_quiz(quiz) for quiz in items]
+            for module in modules:
+                try:
+                    module_items = list(module.get_module_items())
+                    for item in module_items:
+                        if getattr(item, 'type', None) == 'Quiz':
+                            quiz_id = getattr(item, 'content_id', None)
+                            if quiz_id:
+                                try:
+                                    q = course.get_quiz(quiz_id)
+                                    all_quizzes.append(serialize_quiz(q))
+                                except Exception:
+                                    all_quizzes.append({
+                                        "id": quiz_id,
+                                        "title": getattr(item, 'title', None),
+                                        "course_id": course_id,
+                                    })
+                except Exception:
+                    continue
+
+        # Apply pagination
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_quizzes = all_quizzes[start_idx:end_idx]
+        has_more = len(all_quizzes) > end_idx
 
         return build_tool_output(
             tool="canvas_list_quizzes",
-            items=quizzes,
+            items=paginated_quizzes,
             page=page,
             page_size=page_size,
             has_more=has_more,
@@ -236,3 +279,79 @@ def canvas_list_quizzes(
             has_more=False,
             errors=errors,
         )
+
+
+def canvas_list_assignment_groups(
+    auth: AuthContext,
+    *,
+    course_id: int,
+) -> dict[str, Any]:
+    """
+    List assignment groups with weights for a course.
+
+    Assignment groups determine how much each category of assignments
+    contributes to the final grade.
+
+    Args:
+        auth: Authentication context
+        course_id: Canvas course ID
+
+    Returns:
+        Tool output with assignment groups including:
+        - id: Group ID
+        - name: Group name
+        - weight: Percentage weight (0-100)
+        - points_possible: Total points in group
+    """
+    errors: list[str] = []
+
+    try:
+        client = CanvasClient(auth)
+        course = client.get_course(course_id)
+
+        groups = list(course.get_assignment_groups())
+
+        items = []
+        total_weight = 0
+
+        for g in groups:
+            weight = getattr(g, "group_weight", 0) or 0
+            total_weight += weight
+
+            items.append({
+                "id": getattr(g, "id", None),
+                "name": getattr(g, "name", None),
+                "weight": weight,
+                "points_possible": getattr(g, "points_possible", None),
+                "assigns_assignments": getattr(g, "assigns_assignments", None),
+            })
+
+        return {
+            "ok": True,
+            "source": "canvas",
+            "tool": "canvas_list_assignment_groups",
+            "items": items,
+            "total_weight": total_weight,
+            "errors": errors,
+        }
+
+    except CanvasException as e:
+        errors.append(f"Canvas API error: {e}")
+        return {
+            "ok": False,
+            "source": "canvas",
+            "tool": "canvas_list_assignment_groups",
+            "items": [],
+            "total_weight": 0,
+            "errors": errors,
+        }
+    except Exception as e:
+        errors.append(f"Unexpected error: {e}")
+        return {
+            "ok": False,
+            "source": "canvas",
+            "tool": "canvas_list_assignment_groups",
+            "items": [],
+            "total_weight": 0,
+            "errors": errors,
+        }
