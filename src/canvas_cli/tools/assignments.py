@@ -244,6 +244,15 @@ def canvas_list_quizzes(
                 except Exception:
                     continue
 
+        # Filter by since if provided
+        if since:
+            from ..utils.normalize_time import is_after
+
+            all_quizzes = [
+                q for q in all_quizzes
+                if is_after(q.get("updated_at"), since)
+            ]
+
         # Apply pagination
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size

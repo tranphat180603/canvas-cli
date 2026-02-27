@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "canvas-cli"
 version = "0.1.0"
-description = "MCP server exposing Canvas LMS data as tools for Tomo agent workflows"
+description = "FastMCP server exposing Canvas LMS data as tools for Tomo agent workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -13,7 +13,7 @@ authors = [
     { name = "Canvas CLI Team" }
 ]
 dependencies = [
-    "mcp>=1.0.0",
+    "fastmcp>=3.0.0",
     "canvasapi==3.4.0",
     "pydantic>=2.0",
     "httpx>=0.25.0",
@@ -27,7 +27,7 @@ dev = [
 ]
 
 [project.scripts]
-canvas-cli = "canvas_cli.server:main"
+canvas-cli = "canvas_cli.server_fastmcp:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/canvas_cli"]

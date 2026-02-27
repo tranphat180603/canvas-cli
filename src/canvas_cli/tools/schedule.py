@@ -116,9 +116,9 @@ def canvas_get_todo_items(
 
     try:
         client = CanvasClient(auth)
-        user = client.get_current_user()
+        canvas = client.client
 
-        paginated = user.get_todo_items()
+        paginated = canvas.get_todo_items()
         items, has_more = CanvasClient.extract_paginated_list(paginated, page, page_size)
 
         todos = [serialize_todo(todo) for todo in items]
@@ -177,10 +177,10 @@ def canvas_get_upcoming_events(
 
     try:
         client = CanvasClient(auth)
-        user = client.get_current_user()
+        canvas = client.client
 
         # get_upcoming_events returns a list, not PaginatedList
-        events = list(user.get_upcoming_events())
+        events = list(canvas.get_upcoming_events())
 
         # Apply pagination
         sliced, has_more = slice_items(events, page, page_size)
