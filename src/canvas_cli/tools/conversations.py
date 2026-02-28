@@ -1,18 +1,16 @@
 """Conversation tools - inbox messages."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext
 from ..utils.normalize_time import normalize_canvas_time
 from ..utils.pagination import build_tool_output
+from .auth import resolve_auth
 
 
-def serialize_conversation(convo: Any) -> dict[str, Any]:
+def serialize_conversation(convo: Any) -> Dict[str, Any]:
     """Serialize a Canvas Conversation to dict."""
     return {
         "id": getattr(convo, "id", None),
@@ -39,7 +37,7 @@ def serialize_conversation(convo: Any) -> dict[str, Any]:
     }
 
 
-def serialize_conversation_message(msg: Any) -> dict[str, Any]:
+def serialize_conversation_message(msg: Any) -> Dict[str, Any]:
     """Serialize a Canvas Conversation Message to dict."""
     return {
         "id": getattr(msg, "id", None),
@@ -57,18 +55,18 @@ def serialize_conversation_message(msg: Any) -> dict[str, Any]:
 
 
 def canvas_list_conversations(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     page: int = 1,
     page_size: int = 100,
-    scope: str | None = None,
-    since: str | None = None,
-) -> dict[str, Any]:
+    scope: Optional[str] = None,
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List conversations (inbox) for the current user.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         page: Page number
         page_size: Items per page
         scope: Filter scope (unread, starred, archived, etc.)
@@ -77,13 +75,14 @@ def canvas_list_conversations(
     Returns:
         Tool output with conversations
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         canvas = client.client
 
-        kwargs: dict[str, Any] = {}
+        kwargs: Dict[str, Any] = {}
         if scope:
             kwargs["scope"] = scope
 
@@ -134,26 +133,27 @@ def canvas_list_conversations(
 
 
 def canvas_get_conversation(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     conversation_id: int,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Get a single conversation with messages.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         conversation_id: Canvas conversation ID
         since: ISO timestamp for delta fetch
 
     Returns:
         Tool output with conversation details and messages
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         canvas = client.client
 
         convo = canvas.get_conversation(conversation_id, include=["messages"])

@@ -1,6 +1,7 @@
 """Canvas CLI tools package."""
 
 from .announcements import canvas_list_announcements
+from .auth import resolve_auth
 from .assignments import (
     canvas_list_assignments,
     canvas_list_assignment_groups,
@@ -29,6 +30,8 @@ from .structure import (
 )
 
 __all__ = [
+    # Auth
+    "resolve_auth",
     # Profile
     "canvas_get_profile",
     # Courses
@@ -60,7 +63,7 @@ __all__ = [
     "canvas_get_delta_bundle",
 ]
 
-# Tool registry for MCP server
+# Tool registry for MCP server (legacy - FastMCP generates schemas from function signatures)
 TOOL_REGISTRY = {
     "canvas_get_profile": {
         "function": canvas_get_profile,
@@ -70,10 +73,10 @@ TOOL_REGISTRY = {
             "properties": {
                 "auth": {
                     "type": "object",
-                    "description": "Authentication context with canvas_base_url and canvas_access_token",
+                    "description": "Optional auth dict with canvas_base_url and canvas_access_token (uses env vars if not provided)",
                 },
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_list_courses": {
@@ -82,13 +85,13 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "enrollment_state": {"type": "string", "description": "Filter by enrollment state"},
                 "since": {"type": "string", "description": "ISO timestamp for delta fetch"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_get_todo_items": {
@@ -97,12 +100,12 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_get_upcoming_events": {
@@ -111,12 +114,12 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_get_calendar_events": {
@@ -125,7 +128,7 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "start_date": {"type": "string"},
@@ -133,7 +136,7 @@ TOOL_REGISTRY = {
                 "context_codes": {"type": "array", "items": {"type": "string"}},
                 "since": {"type": "string"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_get_planner_items": {
@@ -142,7 +145,7 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "start_date": {"type": "string"},
@@ -150,7 +153,7 @@ TOOL_REGISTRY = {
                 "context_codes": {"type": "array", "items": {"type": "string"}},
                 "since": {"type": "string"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_list_assignments": {
@@ -159,14 +162,14 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "include_submissions": {"type": "boolean", "default": False},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id"],
+            "required": ["course_id"],
         },
     },
     "canvas_list_quizzes": {
@@ -175,13 +178,13 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id"],
+            "required": ["course_id"],
         },
     },
     "canvas_list_assignment_groups": {
@@ -190,10 +193,10 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
             },
-            "required": ["auth", "course_id"],
+            "required": ["course_id"],
         },
     },
     "canvas_list_discussion_topics": {
@@ -202,14 +205,14 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "only_announcements": {"type": "boolean", "default": False},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id"],
+            "required": ["course_id"],
         },
     },
     "canvas_get_discussion_entries": {
@@ -218,14 +221,14 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "topic_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id", "topic_id"],
+            "required": ["course_id", "topic_id"],
         },
     },
     "canvas_get_discussion_replies": {
@@ -234,7 +237,7 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "topic_id": {"type": "integer"},
                 "entry_id": {"type": "integer"},
@@ -242,7 +245,7 @@ TOOL_REGISTRY = {
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id", "topic_id", "entry_id"],
+            "required": ["course_id", "topic_id", "entry_id"],
         },
     },
     "canvas_list_conversations": {
@@ -251,13 +254,13 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "scope": {"type": "string"},
                 "since": {"type": "string"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_get_conversation": {
@@ -266,11 +269,11 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "conversation_id": {"type": "integer"},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "conversation_id"],
+            "required": ["conversation_id"],
         },
     },
     "canvas_list_announcements": {
@@ -279,7 +282,7 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_ids": {"type": "array", "items": {"type": "integer"}},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
@@ -287,7 +290,7 @@ TOOL_REGISTRY = {
                 "end_date": {"type": "string"},
                 "since": {"type": "string"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
     "canvas_list_modules": {
@@ -296,13 +299,13 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id"],
+            "required": ["course_id"],
         },
     },
     "canvas_list_module_items": {
@@ -311,14 +314,14 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "module_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id", "module_id"],
+            "required": ["course_id", "module_id"],
         },
     },
     "canvas_list_pages": {
@@ -327,13 +330,13 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id"],
+            "required": ["course_id"],
         },
     },
     "canvas_list_files": {
@@ -342,13 +345,13 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_id": {"type": "integer"},
                 "page": {"type": "integer", "default": 1},
                 "page_size": {"type": "integer", "default": 100},
                 "since": {"type": "string"},
             },
-            "required": ["auth", "course_id"],
+            "required": ["course_id"],
         },
     },
     "canvas_get_delta_bundle": {
@@ -357,11 +360,11 @@ TOOL_REGISTRY = {
         "parameters": {
             "type": "object",
             "properties": {
-                "auth": {"type": "object"},
+                "auth": {"type": "object", "description": "Optional auth (uses env vars if not provided)"},
                 "course_ids": {"type": "array", "items": {"type": "integer"}},
                 "since": {"type": "string", "description": "ISO timestamp for delta fetch"},
             },
-            "required": ["auth"],
+            "required": [],
         },
     },
 }

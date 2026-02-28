@@ -1,18 +1,16 @@
 """Structure tools - modules, pages, files."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext
 from ..utils.normalize_time import normalize_canvas_time
 from ..utils.pagination import build_tool_output
+from .auth import resolve_auth
 
 
-def serialize_module(module: Any) -> dict[str, Any]:
+def serialize_module(module: Any) -> Dict[str, Any]:
     """Serialize a Canvas Module to dict."""
     return {
         "id": getattr(module, "id", None),
@@ -32,7 +30,7 @@ def serialize_module(module: Any) -> dict[str, Any]:
     }
 
 
-def serialize_module_item(item: Any) -> dict[str, Any]:
+def serialize_module_item(item: Any) -> Dict[str, Any]:
     """Serialize a Canvas Module Item to dict."""
     return {
         "id": getattr(item, "id", None),
@@ -55,7 +53,7 @@ def serialize_module_item(item: Any) -> dict[str, Any]:
     }
 
 
-def serialize_page(page: Any) -> dict[str, Any]:
+def serialize_page(page: Any) -> Dict[str, Any]:
     """Serialize a Canvas Page to dict."""
     return {
         "id": getattr(page, "page_id", None) or getattr(page, "id", None),
@@ -75,7 +73,7 @@ def serialize_page(page: Any) -> dict[str, Any]:
     }
 
 
-def serialize_file(file: Any) -> dict[str, Any]:
+def serialize_file(file: Any) -> Dict[str, Any]:
     """Serialize a Canvas File to dict."""
     return {
         "id": getattr(file, "id", None),
@@ -100,18 +98,18 @@ def serialize_file(file: Any) -> dict[str, Any]:
 
 
 def canvas_list_modules(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List modules for a course.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         page: Page number
         page_size: Items per page
@@ -120,10 +118,11 @@ def canvas_list_modules(
     Returns:
         Tool output with modules
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         paginated = course.get_modules()
@@ -173,19 +172,19 @@ def canvas_list_modules(
 
 
 def canvas_list_module_items(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     module_id: int,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List items in a module.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         module_id: Canvas module ID
         page: Page number
@@ -195,10 +194,11 @@ def canvas_list_module_items(
     Returns:
         Tool output with module items
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         module = course.get_module(module_id)
@@ -249,13 +249,13 @@ def canvas_list_module_items(
 
 
 def canvas_list_pages(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List pages for a course.
 
@@ -264,7 +264,7 @@ def canvas_list_pages(
     extracting pages from modules.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         page: Page number
         page_size: Items per page
@@ -273,10 +273,11 @@ def canvas_list_pages(
     Returns:
         Tool output with pages
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         all_pages = []
@@ -351,18 +352,18 @@ def canvas_list_pages(
 
 
 def canvas_list_files(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List files for a course.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         page: Page number
         page_size: Items per page
@@ -371,10 +372,11 @@ def canvas_list_files(
     Returns:
         Tool output with files
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         paginated = course.get_files()

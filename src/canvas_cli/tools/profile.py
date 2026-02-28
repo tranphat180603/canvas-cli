@@ -1,18 +1,16 @@
 """Profile tool - canvas_get_profile."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, Optional
 
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext, ToolOutput
 from ..utils.normalize_time import normalize_canvas_time, to_iso
 from ..utils.pagination import build_tool_output
+from .auth import resolve_auth
 
 
-def serialize_profile(user: Any) -> dict[str, Any]:
+def serialize_profile(user: Any) -> Dict[str, Any]:
     """Serialize a Canvas User/profile to dict."""
     return {
         "id": getattr(user, "id", None),
@@ -29,12 +27,12 @@ def serialize_profile(user: Any) -> dict[str, Any]:
     }
 
 
-def canvas_get_profile(auth: AuthContext) -> dict[str, Any]:
+def canvas_get_profile(auth: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Get the current user's Canvas profile.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
 
     Returns:
         Tool output with profile data
@@ -42,7 +40,8 @@ def canvas_get_profile(auth: AuthContext) -> dict[str, Any]:
     errors: list[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         user = client.get_current_user()
 
         profile_data = serialize_profile(user)

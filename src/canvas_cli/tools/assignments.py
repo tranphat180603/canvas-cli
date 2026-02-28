@@ -1,18 +1,16 @@
 """Assignments tools - assignments, quizzes, submissions."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext
 from ..utils.normalize_time import normalize_canvas_time
 from ..utils.pagination import build_tool_output
+from .auth import resolve_auth
 
 
-def serialize_assignment(assignment: Any) -> dict[str, Any]:
+def serialize_assignment(assignment: Any) -> Dict[str, Any]:
     """Serialize a Canvas Assignment to dict."""
     result = {
         "id": getattr(assignment, "id", None),
@@ -66,7 +64,7 @@ def serialize_assignment(assignment: Any) -> dict[str, Any]:
     return result
 
 
-def serialize_quiz(quiz: Any) -> dict[str, Any]:
+def serialize_quiz(quiz: Any) -> Dict[str, Any]:
     """Serialize a Canvas Quiz to dict."""
     return {
         "id": getattr(quiz, "id", None),
@@ -101,19 +99,19 @@ def serialize_quiz(quiz: Any) -> dict[str, Any]:
 
 
 def canvas_list_assignments(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     page: int = 1,
     page_size: int = 100,
     include_submissions: bool = False,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List assignments for a course.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         page: Page number
         page_size: Items per page
@@ -123,13 +121,14 @@ def canvas_list_assignments(
     Returns:
         Tool output with assignments
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
-        kwargs: dict[str, Any] = {}
+        kwargs: Dict[str, Any] = {}
         if include_submissions:
             kwargs["include"] = ["submission"]
 
@@ -180,13 +179,13 @@ def canvas_list_assignments(
 
 
 def canvas_list_quizzes(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List quizzes for a course.
 
@@ -195,7 +194,7 @@ def canvas_list_quizzes(
     extracting quizzes from modules.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         page: Page number
         page_size: Items per page
@@ -204,10 +203,11 @@ def canvas_list_quizzes(
     Returns:
         Tool output with quizzes
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         all_quizzes = []
@@ -291,10 +291,10 @@ def canvas_list_quizzes(
 
 
 def canvas_list_assignment_groups(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """
     List assignment groups with weights for a course.
 
@@ -302,7 +302,7 @@ def canvas_list_assignment_groups(
     contributes to the final grade.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
 
     Returns:
@@ -312,10 +312,11 @@ def canvas_list_assignment_groups(
         - weight: Percentage weight (0-100)
         - points_possible: Total points in group
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         groups = list(course.get_assignment_groups())

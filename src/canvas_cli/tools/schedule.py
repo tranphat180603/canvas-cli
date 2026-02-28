@@ -1,19 +1,17 @@
 """Schedule tools - todo, upcoming, calendar, planner."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import httpx
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext, ListCalendarEventsInput
 from ..utils.normalize_time import normalize_canvas_time
 from ..utils.pagination import build_tool_output, slice_items
+from .auth import resolve_auth
 
 
-def serialize_todo(todo: Any) -> dict[str, Any]:
+def serialize_todo(todo: Any) -> Dict[str, Any]:
     """Serialize a todo item to dict."""
     return {
         "id": getattr(todo, "id", None),
@@ -29,7 +27,7 @@ def serialize_todo(todo: Any) -> dict[str, Any]:
     }
 
 
-def serialize_calendar_event(event: Any) -> dict[str, Any]:
+def serialize_calendar_event(event: Any) -> Dict[str, Any]:
     """Serialize a calendar event to dict."""
     return {
         "id": getattr(event, "id", None),
@@ -50,7 +48,7 @@ def serialize_calendar_event(event: Any) -> dict[str, Any]:
     }
 
 
-def serialize_upcoming_event(event: Any) -> dict[str, Any]:
+def serialize_upcoming_event(event: Any) -> Dict[str, Any]:
     """Serialize an upcoming event to dict."""
     # Upcoming events can be assignments or calendar events
     result = {
@@ -74,7 +72,7 @@ def serialize_upcoming_event(event: Any) -> dict[str, Any]:
     return result
 
 
-def serialize_planner_item(item: dict[str, Any]) -> dict[str, Any]:
+def serialize_planner_item(item: Dict[str, Any]) -> Dict[str, Any]:
     """Serialize a planner item to dict."""
     return {
         "id": item.get("id"),
@@ -94,17 +92,17 @@ def serialize_planner_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def canvas_get_todo_items(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Get todo items for the current user.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         page: Page number
         page_size: Items per page
         since: ISO timestamp for delta fetch
@@ -112,10 +110,11 @@ def canvas_get_todo_items(
     Returns:
         Tool output with todo items
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         canvas = client.client
 
         paginated = canvas.get_todo_items()
@@ -155,17 +154,17 @@ def canvas_get_todo_items(
 
 
 def canvas_get_upcoming_events(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Get upcoming events for the current user.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         page: Page number
         page_size: Items per page
         since: ISO timestamp for delta fetch
@@ -173,10 +172,11 @@ def canvas_get_upcoming_events(
     Returns:
         Tool output with upcoming events
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         canvas = client.client
 
         # get_upcoming_events returns a list, not PaginatedList
@@ -219,20 +219,20 @@ def canvas_get_upcoming_events(
 
 
 def canvas_get_calendar_events(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     page: int = 1,
     page_size: int = 100,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    context_codes: list[str] | None = None,
-    since: str | None = None,
-) -> dict[str, Any]:
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    context_codes: Optional[List[str]] = None,
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Get calendar events for the current user.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         page: Page number
         page_size: Items per page
         start_date: Start date filter (ISO format)
@@ -243,12 +243,13 @@ def canvas_get_calendar_events(
     Returns:
         Tool output with calendar events
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
 
-        kwargs: dict[str, Any] = {}
+        kwargs: Dict[str, Any] = {}
         if start_date:
             kwargs["start_date"] = start_date
         if end_date:
@@ -294,22 +295,22 @@ def canvas_get_calendar_events(
 
 
 def canvas_get_planner_items(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     page: int = 1,
     page_size: int = 100,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    context_codes: list[str] | None = None,
-    since: str | None = None,
-) -> dict[str, Any]:
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    context_codes: Optional[List[str]] = None,
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Get planner items for the current user via direct HTTP request.
 
     The planner API is not fully supported by canvasapi, so we use httpx.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         page: Page number
         page_size: Items per page
         start_date: Start date filter (ISO format)
@@ -320,17 +321,18 @@ def canvas_get_planner_items(
     Returns:
         Tool output with planner items
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         base_url = client.base_url
 
         # Build URL
         url = f"{base_url}/planner/items"
 
         # Build params
-        params: dict[str, Any] = {"per_page": page_size}
+        params: Dict[str, Any] = {"per_page": page_size}
         if page > 1:
             # Canvas uses page tokens, not page numbers
             # For simplicity, we'll use offset

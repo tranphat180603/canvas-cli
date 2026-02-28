@@ -1,18 +1,16 @@
 """Courses tool - canvas_list_courses."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext, ListCoursesInput
 from ..utils.normalize_time import normalize_canvas_time
 from ..utils.pagination import build_tool_output, slice_items
+from .auth import resolve_auth
 
 
-def serialize_course(course: Any) -> dict[str, Any]:
+def serialize_course(course: Any) -> Dict[str, Any]:
     """Serialize a Canvas Course to dict."""
     return {
         "id": getattr(course, "id", None),
@@ -42,18 +40,18 @@ def serialize_course(course: Any) -> dict[str, Any]:
 
 
 def canvas_list_courses(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     page: int = 1,
     page_size: int = 100,
-    enrollment_state: str | None = None,
-    since: str | None = None,
-) -> dict[str, Any]:
+    enrollment_state: Optional[str] = None,
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List courses for the current user.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         page: Page number (1-indexed)
         page_size: Number of items per page
         enrollment_state: Filter by enrollment state (active, completed, etc.)
@@ -62,14 +60,15 @@ def canvas_list_courses(
     Returns:
         Tool output with course data
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         user = client.get_current_user()
 
         # Build kwargs for get_courses
-        kwargs: dict[str, Any] = {}
+        kwargs: Dict[str, Any] = {}
         if enrollment_state:
             kwargs["enrollment_state"] = [enrollment_state]
 

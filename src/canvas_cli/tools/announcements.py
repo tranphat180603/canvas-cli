@@ -1,18 +1,16 @@
 """Announcements tool - canvas_list_announcements."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext
 from ..utils.normalize_time import normalize_canvas_time
 from ..utils.pagination import build_tool_output
+from .auth import resolve_auth
 
 
-def serialize_announcement(announcement: Any) -> dict[str, Any]:
+def serialize_announcement(announcement: Any) -> Dict[str, Any]:
     """Serialize a Canvas Announcement to dict."""
     author = getattr(announcement, "author", {}) or {}
     return {
@@ -44,20 +42,20 @@ def serialize_announcement(announcement: Any) -> dict[str, Any]:
 
 
 def canvas_list_announcements(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
-    course_ids: list[int] | None = None,
+    course_ids: Optional[List[int]] = None,
     page: int = 1,
     page_size: int = 100,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    since: str | None = None,
-) -> dict[str, Any]:
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List announcements for one or more courses.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_ids: List of course IDs to fetch announcements from
         page: Page number
         page_size: Items per page
@@ -68,10 +66,11 @@ def canvas_list_announcements(
     Returns:
         Tool output with announcements
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         canvas = client.client
 
         # If no course_ids specified, get all active courses first
@@ -80,13 +79,13 @@ def canvas_list_announcements(
             courses = list(user.get_courses(enrollment_state=["active"]))
             course_ids = [c.id for c in courses]
 
-        all_announcements: list[Any] = []
+        all_announcements: List[Any] = []
 
         # Fetch announcements for each course
         for course_id in course_ids:
             try:
                 course = client.get_course(course_id)
-                kwargs: dict[str, Any] = {}
+                kwargs: Dict[str, Any] = {}
                 if start_date:
                     kwargs["start_date"] = start_date
                 if end_date:

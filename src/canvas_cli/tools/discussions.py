@@ -1,18 +1,16 @@
 """Discussion tools - topics, entries, replies."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from canvasapi.exceptions import CanvasException
 
 from ..canvas_client import CanvasClient
-from ..models import AuthContext
 from ..utils.normalize_time import normalize_canvas_time
 from ..utils.pagination import build_tool_output
+from .auth import resolve_auth
 
 
-def serialize_discussion_topic(topic: Any) -> dict[str, Any]:
+def serialize_discussion_topic(topic: Any) -> Dict[str, Any]:
     """Serialize a Canvas Discussion Topic to dict."""
     author = getattr(topic, "author", {}) or {}
     return {
@@ -44,7 +42,7 @@ def serialize_discussion_topic(topic: Any) -> dict[str, Any]:
     }
 
 
-def serialize_discussion_entry(entry: Any) -> dict[str, Any]:
+def serialize_discussion_entry(entry: Any) -> Dict[str, Any]:
     """Serialize a Canvas Discussion Entry to dict."""
     return {
         "id": getattr(entry, "id", None),
@@ -61,26 +59,26 @@ def serialize_discussion_entry(entry: Any) -> dict[str, Any]:
     }
 
 
-def serialize_discussion_reply(reply: Any) -> dict[str, Any]:
+def serialize_discussion_reply(reply: Any) -> Dict[str, Any]:
     """Serialize a Canvas Discussion Reply to dict."""
     # Replies are similar to entries
     return serialize_discussion_entry(reply)
 
 
 def canvas_list_discussion_topics(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     page: int = 1,
     page_size: int = 100,
     only_announcements: bool = False,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     List discussion topics for a course.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         page: Page number
         page_size: Items per page
@@ -90,13 +88,14 @@ def canvas_list_discussion_topics(
     Returns:
         Tool output with discussion topics
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
-        kwargs: dict[str, Any] = {}
+        kwargs: Dict[str, Any] = {}
         if only_announcements:
             kwargs["only_announcements"] = True
 
@@ -147,19 +146,19 @@ def canvas_list_discussion_topics(
 
 
 def canvas_get_discussion_entries(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     topic_id: int,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Get entries for a discussion topic.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         topic_id: Canvas discussion topic ID
         page: Page number
@@ -169,10 +168,11 @@ def canvas_get_discussion_entries(
     Returns:
         Tool output with discussion entries
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         # Get the topic first
@@ -225,20 +225,20 @@ def canvas_get_discussion_entries(
 
 
 def canvas_get_discussion_replies(
-    auth: AuthContext,
+    auth: Optional[Dict[str, Any]] = None,
     *,
     course_id: int,
     topic_id: int,
     entry_id: int,
     page: int = 1,
     page_size: int = 100,
-    since: str | None = None,
-) -> dict[str, Any]:
+    since: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Get replies for a discussion entry.
 
     Args:
-        auth: Authentication context
+        auth: Canvas auth with canvas_base_url and canvas_access_token
         course_id: Canvas course ID
         topic_id: Canvas discussion topic ID
         entry_id: Canvas discussion entry ID
@@ -249,10 +249,11 @@ def canvas_get_discussion_replies(
     Returns:
         Tool output with discussion replies
     """
-    errors: list[str] = []
+    errors: List[str] = []
 
     try:
-        client = CanvasClient(auth)
+        auth_ctx = resolve_auth(auth)
+        client = CanvasClient(auth_ctx)
         course = client.get_course(course_id)
 
         # Get the topic
